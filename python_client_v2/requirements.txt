@@ -1,0 +1,7 @@
+# file: python_client/requirements.txt
+
+web3
+pycryptodome
+pyshamir
+requests
+umbral

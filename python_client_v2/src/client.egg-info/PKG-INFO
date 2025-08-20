@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: client
+Version: 0.1.0
+Summary: A backend client for decentralized file storage.
+Author: Hardik
+Requires-Python: >=3.8
+Requires-Dist: web3
+Requires-Dist: pycryptodome
+Requires-Dist: pyshamir
+Requires-Dist: requests
+Requires-Dist: umbral
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

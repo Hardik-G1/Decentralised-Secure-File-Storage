@@ -1,0 +1,33 @@
+node_modules
+
+
+# Hardhat files
+/cache
+/artifacts
+
+# TypeChain files
+/typechain
+/typechain-types
+python_client_v2/src/client/__pycache__/
+python_client_v2/src/client/offchain/__pycache__/
+# solidity-coverage files
+/coverage
+/coverage.json
+/UI/cache
+/UI/ui/__pycache__
+/UI/ui/.pytest_cache
+/python_client/venv/
+python_client/__pycache__
+python_client/secure_file_client/__pycache__/
+/Python Client/.env
+/Python Client/venv
+/Python Client/__pycache__
+/Python Client/.pytest_cache
+/Python Client/.mypy_cache
+/Python Client/abi.json
+/UI/venv
+# Hardhat Ignition default folder for deployments against a local node
+ignition/deployments/chain-31337
+.vscode/
+ui_app/__pycache__/
+ui_app/views/__pycache__/

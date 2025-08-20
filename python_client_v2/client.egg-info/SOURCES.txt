@@ -1,0 +1,14 @@
+MANIFEST.in
+setup.py
+client/__init__.py
+client/client.py
+client/constants.py
+client/crypto.py
+client/exceptions.py
+client.egg-info/PKG-INFO
+client.egg-info/SOURCES.txt
+client.egg-info/dependency_links.txt
+client.egg-info/requires.txt
+client.egg-info/top_level.txt
+client/offchain/__init__.py
+client/offchain/index_manager.py
