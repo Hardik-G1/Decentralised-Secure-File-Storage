@@ -5,7 +5,6 @@ src/client/client.py
 src/client/constants.py
 src/client/crypto.py
 src/client/exceptions.py
-src/client/test.py
 src/client.egg-info/PKG-INFO
 src/client.egg-info/SOURCES.txt
 src/client.egg-info/dependency_links.txt
@@ -13,4 +12,3 @@ src/client.egg-info/requires.txt
 src/client.egg-info/top_level.txt
 src/client/offchain/__init__.py
 src/client/offchain/index_manager.py
-tests/test_client.py

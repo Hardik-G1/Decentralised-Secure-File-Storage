@@ -47,7 +47,7 @@ With your virtual environment active, run the following command to install the P
     
 #### Make sure you are in the root directory of the project
 ```
-pip install -e ./python-client_v2
+pip install -e .
 pip install -r requirements.txt
 ```
 Step 5: Run the Application

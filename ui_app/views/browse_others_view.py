@@ -138,7 +138,7 @@ class BrowseOthersView(tk.Frame):
                     index_meta = self.controller.client.get_file_metadata(index_pointer['fileId'])
                     index_blob = self.controller.client.download_from_ipfs(index_meta['ipfsCID'])
                     
-                    decrypted_index_bytes = crypto.decrypt_data(index_blob, self.controller.client.session_master_key)
+                    decrypted_index_bytes = crypto.umbral_decrypt_own(self.controller.client.session_umbral_private_key,index_blob)
                     index_data = IndexManager.from_json_bytes(decrypted_index_bytes)
                     index_files = index_data.get("files", [])
                 else:

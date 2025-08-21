@@ -186,16 +186,17 @@ class Web3Client:
         return pointer['fileId'] == 0
 
     def initialize_all_indexes(self):
-        if not self.session_master_key:
+        if not self.session_umbral_private_key:
             raise exceptions.ClientError("User must be logged in to initialize indexes.")
         print("Initializing all user indexes on-chain...")
+        owner_pub_key = self.session_umbral_private_key.public_key()
         for index_name in [constants.INDEX_NAME_PRIVATE, constants.INDEX_NAME_PUBLIC, constants.INDEX_NAME_SHARED, constants.INDEX_NAME_PAID]:
             print(f"  - Initializing '{index_name}' index...")
             index_bytes = IndexManager.to_json_bytes(IndexManager.create_new_index())
             should_be_encrypted = (index_name in [constants.INDEX_NAME_PRIVATE, constants.INDEX_NAME_SHARED,constants.INDEX_NAME_PAID])
             if should_be_encrypted:
-                blob_to_upload = crypto.encrypt_data(index_bytes, self.session_master_key)
-            else: # Public and Paid indexes are plaintext
+                blob_to_upload = crypto.umbral_encrypt(owner_pub_key, index_bytes)
+            else:
                 blob_to_upload = index_bytes
             integrity_hash = hashlib.sha256(blob_to_upload).digest()
             index_cid = self.upload_to_ipfs(blob_to_upload)
@@ -209,6 +210,9 @@ class Web3Client:
         print("✅ All indexes initialized.")
 
     def _update_index_file(self, index_name: str, file_id_to_add: int, filename: str, content_hash: str):
+        if not self.session_umbral_private_key:
+            raise exceptions.ClientError("Umbral key not loaded in session.")
+        owner_pub_key = self.session_umbral_private_key.public_key()
         index_pointer = self.get_master_index_pointer(self.account.address, index_name)
         index_file_id = index_pointer['fileId']
         if index_file_id == 0:
@@ -221,11 +225,11 @@ class Web3Client:
         should_be_encrypted = (index_name in [constants.INDEX_NAME_PRIVATE, constants.INDEX_NAME_SHARED,constants.INDEX_NAME_PAID])
         decrypted_index_bytes = None
         if should_be_encrypted:
-            if not index_metadata['isEncrypted']: # Sanity check
+            if not index_metadata['isEncrypted']:
                 raise exceptions.IndexManagementError(f"Index '{index_name}' should be encrypted but is not marked as such!")
-            decrypted_index_bytes = crypto.decrypt_data(encrypted_index_blob, self.session_master_key)
+            decrypted_index_bytes = crypto.umbral_decrypt_own(self.session_umbral_private_key,encrypted_index_blob)
         else:
-            if index_metadata['isEncrypted']: # Sanity check
+            if index_metadata['isEncrypted']:
                 raise exceptions.IndexManagementError(f"Index '{index_name}' should be plaintext but is marked as encrypted!")
             decrypted_index_bytes = encrypted_index_blob
 
@@ -235,7 +239,7 @@ class Web3Client:
         
         new_blob_to_upload = None
         if should_be_encrypted:
-            new_blob_to_upload = crypto.encrypt_data(updated_index_bytes, self.session_master_key)
+            new_blob_to_upload = crypto.umbral_encrypt(owner_pub_key ,updated_index_bytes)
         else:
             new_blob_to_upload = updated_index_bytes
 
@@ -290,20 +294,16 @@ class Web3Client:
         grant_package = json.loads(self.download_from_ipfs(key_location_cid))
         verified_kfrags_hex = grant_package['verified_kfrags']
         delegating_pubkey = keys.PublicKey.from_bytes(bytes.fromhex(grant_package['delegating_pubkey']))
-        master_key_package_bytes = grant_package['master_key_package'].encode('utf-8')
-        owner_master_key = crypto.umbral_decrypt_reencrypted(
-            recipient_private_key=self.session_umbral_private_key,
-            delegating_public_key=delegating_pubkey,
-            encrypted_package_bytes=master_key_package_bytes,
-            verified_kfrags_hex=verified_kfrags_hex # Pass the verified kfrags
-        )
-        
         index_pointer = self.get_master_index_pointer(owner_address, index_name)
         index_metadata = self.get_file_metadata(index_pointer['fileId'])
-        encrypted_index_blob = self.download_from_ipfs(index_metadata['ipfsCID'])
-        
-        decrypted_index_bytes = crypto.decrypt_data(encrypted_index_blob, owner_master_key)
-        
+        encrypted_index_package_bytes = self.download_from_ipfs(index_metadata['ipfsCID'])
+        decrypted_index_bytes = crypto.umbral_decrypt_reencrypted(
+            recipient_private_key=self.session_umbral_private_key,
+            delegating_public_key=delegating_pubkey,
+            encrypted_package_bytes=encrypted_index_package_bytes,
+            verified_kfrags_hex=verified_kfrags_hex
+        )
+    
         index_data = IndexManager.from_json_bytes(decrypted_index_bytes)
         print("✅ Shared index successfully retrieved and decrypted.")
         return index_data.get("files", [])
@@ -368,7 +368,7 @@ class Web3Client:
         if hashlib.sha256(encrypted_index_blob).digest() != index_pointer['integrityHash']:
             raise exceptions.IndexManagementError("Integrity check failed!")
 
-        decrypted_index_bytes = crypto.decrypt_data(encrypted_index_blob, self.session_master_key)
+        decrypted_index_bytes = crypto.umbral_decrypt_own(self.session_umbral_private_key, encrypted_index_blob)
         index_data = IndexManager.from_json_bytes(decrypted_index_bytes)
         
         updated_index_data = IndexManager.remove_file_entry(index_data, file_id_to_remove)
@@ -496,7 +496,7 @@ class Web3Client:
         print(f"✅ New set of {len(new_shares)} shares generated.")
         return new_shares
     def grant_index_access(self, index_name: str, recipient_eth_address: str):
-        if not self.session_master_key or not self.session_umbral_private_key:
+        if not self.session_umbral_private_key:
             raise exceptions.ClientError("User must be logged in with both master and Umbral keys.")
         
         checksum_address = self.w3.to_checksum_address(recipient_eth_address)
@@ -519,12 +519,9 @@ class Web3Client:
             receiving_pk=recipient_public_key,
             threshold=1, shares=1
         )
-        master_key_package = crypto.umbral_encrypt(owner_public_key, self.session_master_key)
-        
         grant_package = {
             "verified_kfrags": [bytes(vkfrag).hex() for vkfrag in verified_kfrags],
             "delegating_pubkey": bytes(owner_public_key).hex(),
-            "master_key_package": master_key_package.decode('utf-8')
         }
         grant_bytes = json.dumps(grant_package).encode('utf-8')
         key_location_cid = self.upload_to_ipfs(grant_bytes)
@@ -691,7 +688,7 @@ class Web3Client:
             blob = self.download_from_ipfs(meta['ipfsCID'])
             decrypted_bytes=blob
             if index_name in [constants.INDEX_NAME_PAID,constants.INDEX_NAME_PRIVATE,constants.INDEX_NAME_SHARED]:
-                decrypted_bytes = crypto.decrypt_data(blob, self.session_master_key)
+                decrypted_bytes = crypto.umbral_decrypt_own(self.session_umbral_private_key,blob)
             index_data = IndexManager.from_json_bytes(decrypted_bytes)
             return index_data.get("files", [])
         
@@ -772,8 +769,10 @@ class Web3Client:
         early_block = self.contract.functions.getUserIndexLastBlock().call()
         latest_block = self.w3.eth.block_number
         all_request_logs = []
-
-        if latest_block - early_block >= 10000:
+        print(latest_block)
+        print(early_block)
+        print(latest_block-early_block)
+        if latest_block - early_block >= 500:
             batch_size = 500
             for from_chunk in range(early_block, latest_block + 1, batch_size):
                 start = from_chunk

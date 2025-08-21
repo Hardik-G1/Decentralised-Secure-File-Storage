@@ -91,39 +91,6 @@ def bytes32_to_cid(ipfs_hash: bytes) -> str:
     return cid_string
 
 
-def generate_umbral_keypair() -> tuple[keys.SecretKey, keys.PublicKey]:
-    secret_key = keys.SecretKey.gen_key()
-    public_key = secret_key.get_pubkey()
-    return secret_key, public_key
-
-def umbral_private_key_to_bytes(private_key: keys.SecretKey) -> bytes:
-    return private_key.to_bytes()
-
-def umbral_private_key_from_bytes(private_key_bytes: bytes) -> keys.SecretKey:
-    return keys.SecretKey.from_bytes(private_key_bytes)
-
-def umbral_public_key_to_bytes(public_key: keys.PublicKey) -> bytes:
-    if not isinstance(public_key, keys.PublicKey):
-        raise ValueError("Invalid public key type.")
-    return public_key.to_bytes()
-
-def umbral_public_key_from_bytes(public_key_bytes: bytes) -> keys.PublicKey:
-    return keys.PublicKey.from_bytes(public_key_bytes)
-
-def encrypt_file_key_with_master_key(file_key: bytes, master_key: bytes) -> bytes:
-    return encrypt_data(file_key, master_key)
-
-def decrypt_file_key_with_master_key(encrypted_file_key_blob: bytes, master_key: bytes) -> bytes:
-    return decrypt_data(encrypted_file_key_blob, master_key)
-
-def encrypt_index_content(index_data_json: dict, master_key: bytes) -> bytes:
-    index_data_bytes = json.dumps(index_data_json).encode('utf-8')
-    return encrypt_data(index_data_bytes, master_key)
-
-def decrypt_index_content(encrypted_index_blob: bytes, master_key: bytes) -> dict:
-    plaintext_bytes = decrypt_data(encrypted_index_blob, master_key)
-    return json.loads(plaintext_bytes.decode('utf-8'))
-
 def generate_kfrags_for_sharing(
     owner_private_key: keys.SecretKey,
     recipient_public_key: keys.PublicKey,

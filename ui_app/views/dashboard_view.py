@@ -217,7 +217,7 @@ class DashboardView(tk.Frame):
             if index_name==constants.INDEX_NAME_PUBLIC:
                 index_data=IndexManager.from_json_bytes(encrypted_index_blob)
             else:
-                decrypted_index_bytes = crypto.decrypt_data(encrypted_index_blob, self.controller.client.session_master_key)
+                decrypted_index_bytes = crypto.umbral_decrypt_own(self.controller.client.session_umbral_private_key ,encrypted_index_blob)
                 index_data = IndexManager.from_json_bytes(decrypted_index_bytes)
             
             self.index_cache[index_name] = index_data
@@ -260,6 +260,9 @@ class DashboardView(tk.Frame):
             encrypted_content = self.controller.client.download_from_ipfs(file_meta['ipfsCID'])
             
             decrypted_content = None
+            if file_meta["isIndex"]:
+                self.after(0,self.on_download_error, "Index Files are not allowed for download")
+                return
             if file_meta['isEncrypted']:
                 encrypted_key = self.controller.client.get_my_encrypted_key(file_id)
                 original_file_key = crypto.decrypt_data(encrypted_key, self.controller.client.session_master_key)
