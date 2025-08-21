@@ -46,11 +46,12 @@ PINATA_JWT="YOUR_PINATA_JWT_HERE"
 With your virtual environment active, run the following command to install the Python client package and all its required libraries. This command reads the setup.py and requirements.txt from the python-client directory.
 ```
 # Run in python_client_v2 folder 
+pip install -r requirements.txt
 pip install -e .
 ```
 #### Get the required libraries to run
 ```
-# Run the command in both python_client_v2 and ui_app folder
+# Run the command in ui_app folder
 pip install -r requirements.txt
 ```
 Step 5: Run the Application
