@@ -204,8 +204,10 @@ class Web3Client:
                 file_id = self.register_file(index_cid, 0, should_be_encrypted, constants.AccessMode.PRIVATE, True, "json")
             elif index_name==constants.INDEX_NAME_PUBLIC:
                 file_id = self.register_file(index_cid, 0, should_be_encrypted, constants.AccessMode.PUBLIC, True, "json")
-            elif index_name==constants.INDEX_NAME_PAID or index_name==constants.INDEX_NAME_SHARED:
+            elif index_name==constants.INDEX_NAME_SHARED:
                 file_id = self.register_file(index_cid, 0, should_be_encrypted, constants.AccessMode.SHARED, True, "json")
+            elif index_name==constants.INDEX_NAME_PAID:
+                file_id = self.register_file(index_cid, 0, should_be_encrypted, constants.AccessMode.PAID, True, "json")
             self.set_master_index(index_name, file_id, integrity_hash)
         print("✅ All indexes initialized.")
 
@@ -320,6 +322,16 @@ class Web3Client:
         if not file_metadata["isEncrypted"]:
             decrypted_content = self.download_from_ipfs(file_metadata['ipfsCID'])
             print(f"✅ File {file_id} fully retrieved and decrypted successfully.")
+            return decrypted_content
+        if file_metadata["isIndex"]:
+            raise exceptions.ClientError("Index Files are not allowed for download")
+        
+        is_owner = (file_metadata['owner'].lower() == self.controller.client.get_logged_in_address().lower())
+        if is_owner and not file_metadata["isIndex"]:
+            encrypted_content = self.download_from_ipfs(file_metadata['ipfsCID'])
+            encrypted_key = self.controller.client.get_my_encrypted_key(file_id)
+            original_file_key = crypto.decrypt_data(encrypted_key, self.controller.client.session_master_key)
+            decrypted_content = crypto.decrypt_data(encrypted_content, original_file_key)
             return decrypted_content
 
         if not self.check_access_rights(file_id, self.account.address):
@@ -769,9 +781,8 @@ class Web3Client:
         early_block = self.contract.functions.getUserIndexLastBlock().call()
         latest_block = self.w3.eth.block_number
         all_request_logs = []
-        print(latest_block)
-        print(early_block)
-        print(latest_block-early_block)
+        owner_address=self.w3.to_checksum_address(self.account.address)
+        print(owner_address)
         if latest_block - early_block >= 500:
             batch_size = 500
             for from_chunk in range(early_block, latest_block + 1, batch_size):
@@ -781,22 +792,23 @@ class Web3Client:
                     temp = self.contract.events.IndexAccessRequested.create_filter(
                         from_block=start,
                         to_block=end,
-                        argument_filters={'owner': self.account.address}
+                        argument_filters={'owner': owner_address}
                     )
                     batch_logs = temp.get_all_entries()
-                    all_request_logs.extend(batch_logs)  # Extend the flat list
+                    all_request_logs.extend(batch_logs)
                 except Exception as e:
                     print(f"Warning: Error fetching batch {start}-{end}: {e}")
-                    continue
+                    raise exceptions.ClientError("The NodeRPC free tier is over")
         else:
             try:
                 event_filter = self.contract.events.IndexAccessRequested.create_filter(
                     from_block=early_block,
-                    argument_filters={'owner': self.account.address}
+                    argument_filters={'owner': owner_address}
                 )
                 all_request_logs = event_filter.get_all_entries()
             except Exception as e:
                 print(f"Warning: Error fetching events: {e}")
+                raise exceptions.ClientError("The NodeRPC free tier is over")
 
         if not all_request_logs:
             print("No historical index request events found for this owner.")

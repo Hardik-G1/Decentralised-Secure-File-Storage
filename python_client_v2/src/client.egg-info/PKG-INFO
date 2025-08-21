@@ -9,6 +9,7 @@ Requires-Dist: pycryptodome
 Requires-Dist: pyshamir
 Requires-Dist: requests
 Requires-Dist: umbral
+Requires-Dist: base58
 Dynamic: author
 Dynamic: requires-dist
 Dynamic: requires-python

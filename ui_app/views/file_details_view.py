@@ -120,13 +120,20 @@ class FileDetailsView(tk.Frame):
         
         self.status_var.set("Metadata loaded. Access status determined.")
         
-        if is_owner or has_access:
+        if is_owner or has_access and not meta['isIndex']:
             self.action_button.config(text="Download", state="normal", command=self.handle_download, bootstyle="success")
         elif meta['mode'] == constants.AccessMode.PAID:
-            self.action_button.config(text=f"Purchase for {price_in_eth} MATIC", state="normal", command=self.handle_purchase, bootstyle="success")
+            if meta['isIndex'] and not has_access:
+                self.action_button.config(text="Request Index Access (Browse)", state="normal", command=self.handle_request_index_access_paid, bootstyle="primary")
+            elif meta['isIndex'] and has_access:
+                self.action_button.config(text="Access Approved use Browse tab", state="disabled", bootstyle="secondary")
+            else:
+                self.action_button.config(text=f"Purchase for {price_in_eth} MATIC", state="normal", command=self.handle_purchase, bootstyle="success")
         elif meta['mode'] == constants.AccessMode.SHARED:
-            if meta['isIndex']:
+            if meta['isIndex'] and not has_access:
                  self.action_button.config(text="Request Index Access (Browse)", state="normal", command=self.handle_request_index_access, bootstyle="primary")
+            elif meta['isIndex'] and has_access:
+                self.action_button.config(text="Access Approved use Browse tab", state="disabled", bootstyle="secondary")
             else:
                  self.action_button.config(text="Request File Access (Download)", state="normal", command=self.handle_request_file_access, bootstyle="primary")
         elif meta['mode'] == constants.AccessMode.PUBLIC and not meta['isEncrypted']:
@@ -198,17 +205,28 @@ class FileDetailsView(tk.Frame):
         thread = threading.Thread(target=self._request_index_worker)
         thread.daemon = True
         thread.start()
-
+    def handle_request_index_access_paid(self):
+        self._set_ui_busy(True, f"Sending access request for index...")
+        thread = threading.Thread(target=self._request_index_worker_paid)
+        thread.daemon = True
+        thread.start()
     def _request_index_worker(self):
         try:
             owner = self.current_file_meta['owner']
             index_name_to_request = constants.INDEX_NAME_SHARED
-            
             self.controller.client.request_index_access(owner, index_name_to_request)
             self.after(0, self.on_action_success, f"'{index_name_to_request}' index access request")
         except Exception as e:
             self.after(0, self.on_action_error, "Index access request", e)
-
+    def _request_index_worker_paid(self):
+        try:
+            owner = self.current_file_meta['owner']
+            index_name_to_request = constants.INDEX_NAME_PAID
+            print(index_name_to_request)
+            self.controller.client.request_index_access(owner, index_name_to_request)
+            self.after(0, self.on_action_success, f"'{index_name_to_request}' index access request")
+        except Exception as e:
+            self.after(0, self.on_action_error, "Index access request", e)
     def on_action_success(self, action_name):
         self.status_var.set(f"{action_name} successful! Refresh to see updated status.")
         messagebox.showinfo("Success", f"{action_name} was successful. The owner has been notified.")

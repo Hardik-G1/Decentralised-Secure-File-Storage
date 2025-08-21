@@ -260,9 +260,6 @@ class DashboardView(tk.Frame):
             encrypted_content = self.controller.client.download_from_ipfs(file_meta['ipfsCID'])
             
             decrypted_content = None
-            if file_meta["isIndex"]:
-                self.after(0,self.on_download_error, "Index Files are not allowed for download")
-                return
             if file_meta['isEncrypted']:
                 encrypted_key = self.controller.client.get_my_encrypted_key(file_id)
                 original_file_key = crypto.decrypt_data(encrypted_key, self.controller.client.session_master_key)

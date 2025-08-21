@@ -3,3 +3,4 @@ pycryptodome
 pyshamir
 requests
 umbral
+base58
